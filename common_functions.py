@@ -175,7 +175,7 @@ def get_state(occupancy: int, ac_status: int, comfort: int, time: int ) -> int :
 def get_next_state(current_state: int, action: int) -> int:
     """
         las acciones son 0: apagar, 1: subir, 2: bajar;
-        los estados son 0..63
+        los estados son 0,,63
     """
     if action == 0 :
         #p1
