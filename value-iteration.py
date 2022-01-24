@@ -14,7 +14,7 @@ from common_functions import get_state, get_next_state
 
 start_time = datetime.now()
 
-cred = credentials.Certificate('./energy-coach-firebase-adminsdk-wxvhm-ca15896763.json')
+cred = credentials.Certificate('./energy-coach-firebase-adminsdk-wxvhm-d5099bd43d.json')
 
 firebase_admin.initialize_app(cred, 
 {
@@ -91,29 +91,21 @@ R= [[1,-1,-1],
  [1,-1,-1],
  [1,-1,-1]]
 
-
 def value_iteration(P, R, gamma, tolerance=1e-3):
   """Find V* using value iteration,
-
   Args:
     P: numpy array defining transition dynamics, Shape: |S| x |A| x |S|,
     R: numpy array defining rewards, Shape: |S| x |A|,
     gamma: float, discount factor,
     tolerance: float, tolerance level for computation,
-
   Returns:
     V*: numpy array of shape ns,
     Q*: numpy array of shape ns x na,
   """
   P = np.array(P)
   R = np.array(R)
-  print(P.shape)
-  print(R.shape)
- 
-
   V = np.zeros(64)
   Q = np.zeros((64, 3))
-  
   error = tolerance * 2
   while error > tolerance:
     # This is the Bellman backup (onp,einsum FTW!),
@@ -124,70 +116,63 @@ def value_iteration(P, R, gamma, tolerance=1e-3):
   return V, Q
 
 V,Q=value_iteration(P,R,gamma)
-
-ref = db.reference("/recomendation/rec/")
+ref = db.reference("/recomendation/")
 recommendation = ref.get()
-print(recommendation)
-# for key, value in best_sellers.items():
-# 	if(value["Author"] == "J.R.R. Tolkien"):
-# 		value["Price"] = 90
-# 		ref.child(key).update({"Price":80})
-        
-def sendToDB(state, action):
 
+def sendToDB(state, action):
+  print("estado y accion:",state,action)
   code = 0
   if action == 0:#apagar
     code = 2
   if action == 1: #subir
-    if 3 <= state <=5 or  19 <= state <= 21 or 35<= state <=37 or 51<= state <=53:
+    if (0 <= state <=2) or  (16 <= state <= 18) or (32<= state <=34) or (48<= state <=50):
+      print("hola")
+      code = random.randint(9,11) #seteamos a T3
+    elif 3 <= state <=5 or  19 <= state <= 21 or 35<= state <=37 or 51<= state <=53:
       code = random.randint(6,8) #seteamos a T2
-    if 6 <= state <=8 or  22 <= state <= 24 or 38<= state <=40 or 54<= state <=56:
+    elif 6 <= state <=8 or  22 <= state <= 24 or 38<= state <=40 or 54<= state <=56:
       code = random.randint(9,11) #seteamos a T3
-    if 9 <= state <=11 or  25 <= state <= 27 or 41<= state <=43 or 57<= state <=59:
+    elif 9 <= state <=11 or  25 <= state <= 27 or 41<= state <=43 or 57<= state <=59:
       code = random.randint(9,11) #seteamos a T3
+    else:
+      print("no entra a los otros")
+      code=2 #apagar
   if action == 2: #bajar
-    if 3 <= state <=5 or  19 <= state <= 21 or 35<= state <=37 or 51<= state <=53:
+    if 0 <= state <=2 or  16 <= state <= 18 or 32<= state <=34 or 48<= state <=50:
+      code = 2 #apagar
+    elif 3 <= state <=5 or  19 <= state <= 21 or 35<= state <=37 or 51<= state <=53:
       code = random.randint(3,5) #seteamos a T1
-    if 6 <= state <=8 or  22 <= state <= 24 or 38<= state <=40 or 54<= state <=56:
+    elif 6 <= state <=8 or  22 <= state <= 24 or 38<= state <=40 or 54<= state <=56:
       code = random.randint(3,5) #seteamos a T1
-    if 9 <= state <=11 or  25 <= state <= 27 or 41<= state <=43 or 57<= state <=59:
+    elif 9 <= state <=11 or  25 <= state <= 27 or 41<= state <=43 or 57<= state <=59:
       code = random.randint(6,8) #seteamos a T2
-   
-
-  
-  
-
+    else:
+      code=2 #apagar
+  print("codigo a  enviar:",code)
+  ref.update({"rec":code})
+  time.sleep(3600)
   return None
 
-# for i in range(len(Q)):
-#     print(i,Q[i])
-
 previous_state = 0
-n = 0
-while n<3:
+
+while 1:
   current_time = datetime.now().hour
-  print(n)  
-    # comfort = db.reference('comfort/value'),get()
-  comfort = random.randint(0,2) 
-    # ac_status = db.reference('recomendation/rec'),get()
-  ac_status = random.randint(2,11) 
-    # occupancy = db.reference('occupancy/value'),get()
-  occupancy = random.randint(0,1) 
-  #state = get_state(occupancy,ac_status,comfort,current_time) 
-  state = 1
+  comfort = db.reference('comfort/value').get()
+  ac_status = db.reference('recomendation/rec').get()
+  occupancy = db.reference('occupancy/value').get()
+  state = get_state(occupancy,ac_status,comfort,current_time) 
+  action=np.argmax(Q[state])
+  new_state = get_next_state(state,action)
+  print("estado, accion, nexstate", state,action,new_state)
+
   if state == previous_state:
     print("si es igual")
-    time.sleep(5) 
-  elif state ==  get_next_state(state,action):
-    print("no es ")  
+    time.sleep(60) 
+  elif state ==  new_state:
+    print("no es ")
+    time.sleep(60)   
   else:
-    sendToDB()
+    sendToDB(state,action)
   previous_state = state
-  # action=np.argmax(Q[state])
-  # new_state = get_next_state(state,action)
-  n += 1
-  # old_state=sendToDB()
-  # if old_state == get_state(occupancy,ac_status,comfort,current_time) :
-  #   time.sleep(60)
+
     
-  
